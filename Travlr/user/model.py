@@ -1,108 +1,70 @@
 import datetime
-import json
-import uuid
+from dataclasses import dataclass
 
-from flask import jsonify
+from flask_serialize import FlaskSerialize
+
 from Travlr import db
-from flask_restful import Resource
-from flask_sqlalchemy import SQLAlchemy
+from Travlr.expense.model import Expense
+from Travlr.vehicle.model import Vehicle
 
-timestamp = datetime.datetime
+fs_mixin = FlaskSerialize(db)
+user_travel = db.Table('user_travel',
+                       db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
+                       db.Column('travel_id', db.Integer, db.ForeignKey('travel.id')),
+                       db.PrimaryKeyConstraint('user_id', 'travel_id')
+                       )
 
 
-class User(db.Model):
+@dataclass
+class User(db.Model, fs_mixin):
+    id: int
+    name: str
+    email: str
+    password: str
+    date_of_birth: str
+    mobile_number: str
+    gender: str
+    is_deleted: int
+    created_date: datetime
+    updated_date: datetime
+    created_by: datetime
+    updated_by: datetime
+    expense: Expense
+    vehicle: Vehicle
+
+    """
+    This class is a model class for User
+    """
+    __tablename__ = 'user'
     id = db.Column(db.Integer(), primary_key=True)
-    user_id = db.Column(db.String(50), unique=True)
     name = db.Column(db.String(50))
-    email_id = db.Column(db.String(50), unique=True)
+    email = db.Column(db.String(50), unique=True, nullable=False)
     password = db.Column(db.String(50))
     date_of_birth = db.Column(db.Date)
     mobile_number = db.Column(db.String(10), unique=True)
     gender = db.Column(db.String(15))
     is_deleted = db.Column(db.Boolean)
-    created_date = db.Column(db.Date)
-    updated_date = db.Column(db.Date)
-    created_user = db.Column(db.String(50))
-    updated_user = db.Column(db.String(50))
+    created_date = db.Column(db.DateTime)
+    updated_date = db.Column(db.DateTime)
+    created_by = db.Column(db.String(50))
+    updated_by = db.Column(db.String(50))
+    expense = db.relationship('Expense', backref='user')
+    vehicle = db.relationship('Vehicle', backref='user')
+    user_travel = db.relationship('Travel', secondary=user_travel)
 
-    user_details = {}
-    user = {}
-
-    def __init__(self, user_id=None, name=None, email_id=None, password=None,
+    def __init__(self, user_id=None, name=None, email=None, password=None,
                  date_of_birth=None, mobile_number=None, gender=None, is_deleted=0,
                  created_date=None, updated_date=None, created_user=None,
                  updated_user=None):
-        self.__id = user_id
-        self.__name = name
-        self.__email_id = email_id
-        self.__password = password
-        self.__date_of_birth = date_of_birth
-        self.__mobile_number = mobile_number
-        self.__gender = gender
-        self.__is_deleted = is_deleted
-        self.__created_date = created_date
-        self.__updated_date = updated_date
-        self.__created_user = created_user
-        self.__updated_user = updated_user
-
-    def post(self, name=None, email_id=None, password=None, date_of_birth=None,
-             mobile_number=None, gender=None):
-        self.user_details["user_id"] = str(uuid.uuid1())
-        self.user_details["name"] = name
-        self.user_details["email_id"] = email_id
-        self.user_details["password"] = password
-        self.user_details["date_of_birth"] = date_of_birth
-        self.user_details["mobile_number"] = mobile_number
-        self.user_details["gender"] = gender
-        self.user_details["is_deleted"] = 0
-        self.user[self.user_details["user_id"]] = self.user_details.copy()
-        return self.user
-
-    def get(self):
-        get_user = {}
-        for val in self.user.values():
-            if val['is_deleted'] != 1:
-                get_user[val['user_id']] = val.copy()
-        return get_user
-
-    def get_user(self, email_id):
-        for key, val in self.user.items():
-            if email_id in val.values() and val['is_deleted'] != 1:
-                return json.dumps(val)
-        return jsonify({
-            'status_code': 404,
-            'description': 'User Not Found',
-            'timestamp': str(timestamp.now())
-        })
-
-    def delete(self, email_id):
-        for key, val in self.user.items():
-            if email_id in val.values() and val['is_deleted'] != 1:
-                val['is_deleted'] = 1
-                return jsonify({
-                    'id': val['user_id'],
-                    'status_code': 200,
-                    'description': 'User Deleted Successfully',
-                   'timestamp': str(timestamp.now())
-                })
-        return jsonify({
-            'status_code': 404,
-            'description': 'User Not Found',
-            'timestamp': str(timestamp.now())
-        })
-
-    def update(self, user_id=None, name=None, password=None, date_of_birth=None,
-               mobile_number=None, gender=None):
-        if name is not None:
-            self.user_details['name'] = name
-        if password is not None:
-            self.user_details['password'] = password
-        if date_of_birth is not None:
-            self.user_details['date_of_birth'] = date_of_birth
-        if mobile_number is not None:
-            self.user_details['mobile_number'] = mobile_number
-        if gender is not None:
-            self.user_details['gender'] = gender
-        if user_id is not None:
-            self.user[user_id] = self.user_details.copy()
-        return self.user
+        self.id = user_id
+        self.name = name
+        self.email = email
+        self.password = password
+        self.date_of_birth = date_of_birth
+        self.mobile_number = mobile_number
+        self.gender = gender
+        self.is_deleted = is_deleted
+        self.created_date = created_date
+        self.updated_date = updated_date
+        self.created_user = created_user
+        self.updated_user = updated_user
