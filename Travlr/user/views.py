@@ -3,17 +3,18 @@ import json
 import hashlib
 
 from flask import Blueprint, request, Response, jsonify
-from sqlalchemy.exc import IntegrityError
 
 from Travlr import app, db
 from Travlr.constants import constants
 from Travlr.exceptions.data_not_found_exception import DataNotFoundException
+from Travlr.exceptions.invalid_credentials_exception import InvalidCredentialsException
+from Travlr.exceptions.user_already_exists_exception import UserAlreadyExistsException
 from Travlr.user.model import User
 
 views = Blueprint('views', __name__)
 timestamp = datetime.datetime
 
-@views.route('/view', methods = ['GET'])
+@views.route('/view', methods = [constants.GET])
 def view_users():
     """
     This method will retrieve all user details from the database
@@ -24,7 +25,7 @@ def view_users():
         query = db.session.query(User).all()
         if query is None:
             app.logger.warning("User data is not available")
-            raise DataNotFoundException("User data is not available", 404)
+            raise DataNotFoundException("User data is not available", constants.CODE_404)
         else:
             app.logger.info("Fetching user data")
             return jsonify(query)
@@ -42,7 +43,7 @@ def view_user(email):
         query = db.session.query(User).filter_by(email=email, is_deleted=0).first()
         if query is None:
             app.logger.warning("User data is not available")
-            raise DataNotFoundException("User data is not available", 404)
+            raise DataNotFoundException("User data is not available", constants.CODE_404)
         else:
             app.logger.info("Fetching user data")
             return jsonify(query)
@@ -57,14 +58,16 @@ def login_user():
         user = db.session.query(User).filter_by(email=email).first()
         if user is not None and user.password == password:
             return {
-                'id': user.id,
-                'name': user.name,
-                'email': user.email,
-                'mobile_number': user.mobile_number,
-                'gender': user.gender
+                constants.ID: user.id,
+                constants.NAME: user.name,
+                constants.EMAIL: user.email,
+                constants.MOBILE_NUMBER: user.mobile_number,
+                constants.GENDER: user.gender
             }
         else:
-            return Response("Invalid username or password", 401)
+            app.logger.warning("Invalid username or password")
+            raise InvalidCredentialsException("Invalid username or password",
+                                              constants.CODE_401)
 
 
 @views.route('/add', methods = [constants.POST])
@@ -84,15 +87,22 @@ def register_user():
     created_date = timestamp.now()
     app.logger.info("Adding user details to user table")
     with app.app_context():
-        db.session.add(User(name=name, email=email, password=password,
-             date_of_birth=date_of_birth, mobile_number=mobile_number,
-             gender=gender, is_deleted=is_deleted, created_date=created_date))
         try:
+            db.session.add(User(name=name, email=email, password=password,
+                                date_of_birth=date_of_birth, mobile_number=mobile_number,
+                                gender=gender, is_deleted=is_deleted,
+                                created_date=created_date))
             db.session.commit()
-        except IntegrityError as e:
+        except Exception as e:
             db.session.rollback()
+            app.logger.warning("User already exists")
+            raise UserAlreadyExistsException(e, constants.CODE_400)
     app.logger.info("Adding user details")
-    return "added successfully"
+    return {
+        constants.MESSAGE: "User added successfully",
+        constants.STATUS_CODE: constants.CODE_200,
+        constants.TIMESTAMP: timestamp.now()
+    }
 
 
 @views.route('/delete/<email>', methods = [constants.DELETE])
@@ -109,14 +119,14 @@ def delete_user(email):
             user.is_deleted = 1
             db.session.commit()
             app.logger.info(f"User deleted successfully - user_id: {user.id}")
-            return ({
-                'id': user.id,
-                'status_code': 200,
-                'description': 'User Deleted Successfully',
-                'timestamp': str(timestamp.now())
-            })
+            return {
+                constants.ID: user.id,
+                constants.STATUS_CODE: constants.CODE_200,
+                constants.DESCRIPTION: 'User deleted successfully',
+                constants.TIMESTAMP: str(timestamp.now())
+            }
     app.logger.warn(f"No user found - email_id: {email}")
-    return DataNotFoundException("User data not found", 404)
+    raise DataNotFoundException("User data not found", constants.CODE_404)
 
 
 @views.route('/update/<email>', methods = [constants.PATCH])
@@ -155,4 +165,7 @@ def update_user(email):
             app.logger.info("Updated updated_date")
             db.session.commit()
             app.logger.info("Updated user")
+        else:
+            app.logger.warning("User data not found", constants.CODE_404)
+            raise DataNotFoundException("User data not found", constants.CODE_404)
     return json.dumps(user)

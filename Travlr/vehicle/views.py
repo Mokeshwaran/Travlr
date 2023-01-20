@@ -25,7 +25,8 @@ def view_vehicles(user_id):
         query = db.session.query(Vehicle).filter_by(id=user_id).all()
         if query is None:
             app.logger.warning("Vehicle data is not available")
-            raise DataNotFoundException("Vehicle data is not available", 404)
+            raise DataNotFoundException("Vehicle data is not available",
+                                        constants.CODE_404)
         else:
             app.logger.info("Fetching vehicle data")
             return json.dumps(query)
@@ -42,7 +43,8 @@ def view_vehicle(vehicle_id):
         query = db.session.query(Vehicle).filter_by(id=vehicle_id, is_deleted=0).first()
         if query is None:
             app.logger.warning("Vehicle data is not available")
-            raise DataNotFoundException("Vehicle data is not available", 404)
+            raise DataNotFoundException("Vehicle data is not available",
+                                        constants.CODE_404)
         else:
             app.logger.info("Fetching vehicle data")
             return json.dumps(query)
@@ -86,21 +88,21 @@ def delete_vehicle(vehicle_id):
         vehicle = db.session.query(Vehicle).filter_by(id=vehicle_id).first()
         if vehicle is None:
             app.logger.warn(f"No travel found - vehicle_id: {vehicle_id}")
-            raise DataNotFoundException("vehicle data not found", 404)
+            raise DataNotFoundException("vehicle data not found", constants.CODE_404)
         vehicle.is_deleted = 1
         vehicle.updated_date = str(timestamp.now())
         vehicle.updated_by = vehicle_id
         db.session.commit()
         app.logger.info(f"Vehicle deleted successfully - Vehicle_id: {vehicle.id}")
         return ({
-            'id': vehicle.id,
-            'status_code': 200,
-            'description': 'Vehicle Deleted Successfully',
-            'timestamp': str(timestamp.now())
+            constants.ID: vehicle.id,
+            constants.STATUS_CODE: constants.CODE_200,
+            constants.DESCRIPTION: 'Vehicle Deleted Successfully',
+            constants.TIMESTAMP: str(timestamp.now())
         })
 
 
-@views.route('/update/<user_id>/<vehicle_id>', methods = ['PATCH'])
+@views.route('/update/<user_id>/<vehicle_id>', methods = [constants.PATCH])
 def update_vehicle(user_id, vehicle_id):
     """
     This method will update a vehicle based on the vehicle_id and user_id
@@ -139,5 +141,5 @@ def update_vehicle(user_id, vehicle_id):
             app.logger.info("Updated vehicle")
         else:
             app.logger.warning("Vehicle data not found")
-            raise DataNotFoundException("Vehicle data not found", 404)
+            raise DataNotFoundException("Vehicle data not found", constants.CODE_404)
     return json.dumps(vehicle)

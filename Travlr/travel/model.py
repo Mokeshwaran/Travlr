@@ -1,6 +1,8 @@
 import datetime
+from dataclasses import dataclass
 
 from flask_serialize import FlaskSerialize
+# from marshmallow import schema
 
 from Travlr import db
 from Travlr.location.model import location_travel
@@ -10,10 +12,27 @@ fs_mixin = FlaskSerialize(db)
 timestamp = datetime.datetime
 
 
-class Travel(db.Model, fs_mixin):
+@dataclass
+class Travel(db.Model):
     """
     This class is a model class for Travel
     """
+    id: int
+    origin_name: str
+    origin_lat: float
+    origin_lng: float
+    destination_name: str
+    destination_lat: float
+    destination_lng: float
+    distance: float
+    places_visiting: str
+    is_deleted: int
+    created_date: datetime
+    updated_date: datetime
+    created_by: int
+    updated_by: int
+
+
     __tablename__ = 'travel'
     id = db.Column(db.Integer(), primary_key=True)
     origin_name = db.Column(db.String(50))

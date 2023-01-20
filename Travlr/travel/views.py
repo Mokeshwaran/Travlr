@@ -1,11 +1,12 @@
 import datetime
 import json
+import pickle
 import urllib
 import os
 import googlemaps
 
 from dotenv import load_dotenv
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 
 from Travlr import app, db
 from Travlr.constants import constants
@@ -19,21 +20,23 @@ map_client = googlemaps.Client(os.getenv('API_KEY'))
 views = Blueprint('views', __name__)
 timestamp = datetime.datetime
 
-@views.route('/view', methods = [constants.GET])
-def view_travels():
+@views.route('/view/<user_id>', methods = [constants.GET])
+def view_travels(user_id):
     """
     This method will retrieve all the travels from the database.
+    :param user_id: id of the user
     :return: All travel data as JSON response
     :raise DataNotFoundException: if the data is not found
     """
     with app.app_context():
-        query = db.session.query(Travel).all()
+        query = db.session.query(Travel).join(Travel,User.user_travel).all()
         if query is None:
             app.logger.warning("Travel data is not available")
-            raise DataNotFoundException("Travel data is not available", 404)
+            raise DataNotFoundException("Travel data is not available",
+                                        constants.CODE_404)
         else:
             app.logger.info("Fetching travel data")
-            return json.dumps(query)
+            return jsonify(query)
 
 
 @views.route('/view-one/<travel_id>', methods = [constants.GET])
@@ -45,13 +48,14 @@ def view_travel(travel_id):
     :raise DataNotFoundException: if the data is not found
     """
     with app.app_context():
-        query = db.session.query(Travel).filter_by(id=travel_id).first
+        query = db.session.query(Travel).filter_by(id=travel_id).first()
         if query is None:
             app.logger.warning("Travel data is not available")
-            raise DataNotFoundException("Travel data is not available", 404)
+            raise DataNotFoundException("Travel data is not available",
+                                        constants.CODE_404)
         else:
             app.logger.info("Fetching travel data")
-            return json.dumps(query)
+            return pickle.loads(pickle.dumps(query))
 
 
 @views.route('/add', methods = [constants.POST])
@@ -67,12 +71,11 @@ def add_travel():
     places_visiting = data.get('places_visiting')
     travel_type = data['travel_type']
     app.logger.info("Added travel data")
-
-    travel_type = 'restaurant' if travel_type is None else travel_type
+    location_type = request.args.get('location')
+    location_type = constants.RESTAURANT if location_type is None else location_type
 
     # Calculating directions using Google Maps API
     # and filtering user requested data.
-    location_type = request.args.get('location')
     directions = get_directions(origin_name, destination_name)
     loc = get_locations(location_type=location_type, directions=directions)
 
@@ -91,7 +94,8 @@ def add_travel():
                                        destination_lng=destination_lng,
                                        places_visiting=places_visiting,
                                        distance=distance, travel_type=travel_type,
-                                       created_date=timestamp.now()))
+                                       created_date=timestamp.now(),
+                                       created_by=user_id))
         db.session.add(user)
         db.session.commit()
     app.logger.info("Added travel details")
@@ -119,13 +123,13 @@ def delete_travel(travel_id):
             db.session.commit()
             app.logger.info(f"Travel deleted successfully - travel_id: {travel.id}")
             return ({
-                'id': travel.id,
-                'status_code': 200,
-                'description': 'Travel Deleted Successfully',
-                'timestamp': str(timestamp.now())
+                constants.ID: travel.id,
+                constants.STATUS_CODE: constants.CODE_200,
+                constants.DESCRIPTION: 'Travel Deleted Successfully',
+                constants.TIMESTAMP: str(timestamp.now())
             })
     app.logger.warn(f"No travel found - travel_id: {travel_id}")
-    return DataNotFoundException("Travel data not found", 404)
+    return DataNotFoundException("Travel data not found", constants.CODE_404)
 
 
 @views.route('/update/<travel_id>', methods = [constants.PATCH])
@@ -135,6 +139,7 @@ def update_travel(travel_id):
     :param travel_id: id of the travel
     :return: Updated travel detail
     :raise DataNotFoundException: if the data is not found
+    :raise MustNotBeEmptyException: if the given data in empty
     """
     data = request.json
     origin_name = data.get('origin_name')
@@ -144,7 +149,7 @@ def update_travel(travel_id):
 
     location_type = request.args.get('location')
     directions = get_directions(origin_name, destination_name)
-    loc = get_locations(location_type=location_type, directions=directions)
+    get_locations(location_type=location_type, directions=directions)
 
     with app.app_context():
         travel = db.session.query(Travel).filter_by(id=travel_id).first()
@@ -156,7 +161,6 @@ def update_travel(travel_id):
             destination_lat = directions['routes'][0]['legs'][0]['end_location']['lat']
             destination_lng = directions['routes'][0]['legs'][0]['end_location']['lng']
             app.logger.info("Updating destination_lat, destination_lng using directions API")
-            distance = directions['routes'][0]['legs'][0]['distance']['value']
 
         if travel is not None:
             app.logger.info("Updating travel details")
@@ -172,7 +176,7 @@ def update_travel(travel_id):
             return json.dumps(travel)
         else:
             app.logger.warning("Travel data doesn't exist")
-            return DataNotFoundException("Travel data doesn't exist", 404)
+            return DataNotFoundException("Travel data doesn't exist", constants.CODE_404)
 
 def get_directions(origin_name, destination_name):
     """
@@ -181,7 +185,7 @@ def get_directions(origin_name, destination_name):
     :param destination_name: Name of the destination
     :return: JSON response of directions obtained from Google Maps API
     """
-    request_url = os.getenv('URL') + 'origin={}&destination={}&key={}' \
+    request_url = os.getenv('URL') + constants.ORIGIN_DESTINATION_KEY \
         .format(origin_name.replace(' ', '+'),
                 destination_name.replace(' ', '+'),
                 os.getenv('API_KEY'))

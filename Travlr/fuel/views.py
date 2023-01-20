@@ -33,7 +33,7 @@ def view_fuels():
         query = db.session.query(Fuel).all()
         if not query:
             app.logger.warning("Fuel data is not available")
-            raise DataNotFoundException("Fuel data is not available", 404)
+            raise DataNotFoundException("Fuel data is not available", constants.CODE_404)
         else:
             app.logger.info("Fetching fuel data")
             return jsonify(query)
@@ -61,10 +61,10 @@ def add_petrol(fuel_table, query):
         else:
             app.logger.info("Updating petrol data")
             fuel_data.update({
-                'fuel_price': fuel_price,
-                'updated_date': timestamp.now(),
-                'updated_by': constants.ADMIN
-            }, synchronize_session='fetch')
+                constants.FUEL_PRICE: fuel_price,
+                constants.UPDATED_DATE: timestamp.now(),
+                constants.UPDATED_BY: constants.ADMIN
+            }, synchronize_session=constants.FETCH)
             db.session.commit()
             app.logger.info("Updated petrol data")
         app.logger.info(f"Posted petrol data - district_name: {key}")
@@ -92,10 +92,10 @@ def add_diesel(fuel_table, query):
         else:
             app.logger.info("Updating diesel data")
             fuel_data.update({
-                'fuel_price': fuel_price,
-                'updated_date': timestamp.now(),
-                'updated_by' : constants.ADMIN
-            }, synchronize_session='fetch')
+                constants.FUEL_PRICE: fuel_price,
+                constants.UPDATED_DATE: timestamp.now(),
+                constants.UPDATED_BY: constants.ADMIN
+            }, synchronize_session=constants.FETCH)
             db.session.commit()
             app.logger.info("Updated diesel data")
         app.logger.info(f"Posted diesel data - district_name: {key}")
@@ -128,19 +128,28 @@ def get_diesel():
     driver.get(constants.DIESEL_URL)
     # Finding the element using xpath and getting its HTML
     table = driver.find_element(By.XPATH, constants.XPATH) \
-        .get_attribute('outerHTML')
+        .get_attribute(constants.OUTER_HTML)
+
+    driver.get(constants.DIESEL_URL_UT)
+    # Finding the element using xpath and getting its HTML
+    table_ut = driver.find_element(By.XPATH, constants.XPATH) \
+        .get_attribute(constants.OUTER_HTML)
 
     diesel_table = pd.read_html(table)[0]
+    diesel_table_ut = pd.read_html(table_ut)[0]
+    diesel_table = pd.concat([diesel_table, diesel_table_ut])
     # Renaming columns of the table for the database
     diesel_table.rename(columns={
-        'City/District': 'district_name',
-        'Price': 'fuel_price'
+        constants.CITY_DISTRICT: constants.DISTRICT_NAME,
+        constants.PRICE: constants.FUEL_PRICE
     }, inplace=True)
+    standardize_district_name(diesel_table)
     # Removing unnecessary column from the table
-    diesel_table.pop('Change')
+    diesel_table.pop(constants.CHANGE)
     diesel_table['fuel_type'] = constants.DIESEL
     # Setting district_name as key and other rows as values and converting to dict
-    diesel_table = diesel_table.set_index('district_name').to_dict(orient='index')
+    diesel_table = diesel_table.set_index(constants.DISTRICT_NAME)\
+        .to_dict(orient=constants.INDEX)
     app.logger.info("Fetched diesel data")
     return diesel_table
 
@@ -154,18 +163,65 @@ def get_petrol():
     driver.get(constants.PETROL_URL)
     # Finding the element using xpath and getting its HTML
     table = driver.find_element(By.XPATH, constants.XPATH) \
-        .get_attribute('outerHTML')
+        .get_attribute(constants.OUTER_HTML)
+
+    driver.get(constants.PETROL_URL_UT)
+    # Finding the element using xpath and getting its HTML
+    table_ut = driver.find_element(By.XPATH, constants.XPATH) \
+        .get_attribute(constants.OUTER_HTML)
 
     petrol_table = pd.read_html(table)[0]
+    petrol_table_ut = pd.read_html(table_ut)[0]
+    petrol_table = pd.concat([petrol_table, petrol_table_ut])
     # Renaming columns of the table for the database
     petrol_table.rename(columns={
-        'City/District': 'district_name',
-        'Price': 'fuel_price'
+        constants.CITY_DISTRICT: constants.DISTRICT_NAME,
+        constants.PRICE: constants.FUEL_PRICE
     }, inplace=True)
+    standardize_district_name(petrol_table)
     # Removing unnecessary column from the table
-    petrol_table.pop('Change')
+    petrol_table.pop(constants.CHANGE)
     petrol_table['fuel_type'] = constants.PETROL
     # Setting district_name as key and other rows as values and converting to dict
-    petrol_table = petrol_table.set_index('district_name').to_dict(orient='index')
+    petrol_table = petrol_table.set_index(constants.DISTRICT_NAME)\
+        .to_dict(orient=constants.INDEX)
     app.logger.info("Fetched petrol data")
     return petrol_table
+
+def standardize_district_name(petrol_table):
+    """
+    This method will standardize wrongly spelled district names.
+    :param petrol_table: table of petrol data
+    """
+    petrol_table.loc[
+        petrol_table[constants.DISTRICT_NAME] == "Kanniyakumari", constants.DISTRICT_NAME
+    ] = "Kanyakumari"
+
+    petrol_table.loc[
+        petrol_table[constants.DISTRICT_NAME] == "Teni", constants.DISTRICT_NAME
+    ] = "Theni"
+
+    petrol_table.loc[
+        petrol_table[constants.DISTRICT_NAME] == "Tiruchchirappalli",
+        constants.DISTRICT_NAME
+    ] = "Tiruchirappalli"
+
+    petrol_table.loc[
+        petrol_table[constants.DISTRICT_NAME] == "Tirupur", constants.DISTRICT_NAME
+    ] = "Tiruppur"
+
+    petrol_table.loc[
+        petrol_table[constants.DISTRICT_NAME] == "Tiruvallur", constants.DISTRICT_NAME
+    ] = "Thiruvallur"
+
+    petrol_table.loc[
+        petrol_table[constants.DISTRICT_NAME] == "Tuticorin", constants.DISTRICT_NAME
+    ] = "Thoothukudi"
+
+    petrol_table.loc[
+        petrol_table[constants.DISTRICT_NAME] == "Virudunagar", constants.DISTRICT_NAME
+    ] = "Virudhunagar"
+
+    petrol_table.loc[
+        petrol_table[constants.DISTRICT_NAME] == "Pondicherry", constants.DISTRICT_NAME
+    ] = "Puducherry"

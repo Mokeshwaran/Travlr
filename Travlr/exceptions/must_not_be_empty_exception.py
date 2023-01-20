@@ -1,11 +1,11 @@
 from Travlr.exceptions.api_exception import APIException
 
 
-class DataNotFoundException(APIException):
+class MustNotBeEmptyException(APIException):
     """
-    Custom exception class will be raised if the data is not found
+    Custom exception class will be raised if the field is not be empty
     """
-    description = 'Data Not Found'
+    description = 'Must Not Be Empty'
 
     def __init__(self, message, code):
         self.message = message

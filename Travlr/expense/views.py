@@ -36,7 +36,7 @@ def view_expenses(user_id):
             app.logger.info("Fetching expense data")
             return json.dumps(query)
 
-@views.route('/view-one', methods = [constants.GET])
+@views.route('/view-one/<user_id>/<travel_id>', methods = [constants.GET])
 def view_expense(user_id, travel_id):
     """
     This method is used to get the expense associated
@@ -52,7 +52,8 @@ def view_expense(user_id, travel_id):
                                                     is_deleted=0).first()
         if query is None:
             app.logger.warning("Expense data is not available")
-            raise DataNotFoundException("Expense data is not available", 404)
+            raise DataNotFoundException("Expense data is not available",
+                                        constants.CODE_404)
         else:
             app.logger.info("Fetching expense data")
             return json.dumps(query)
@@ -66,12 +67,11 @@ def add_expense(travel_id):
     :raise DataNotFoundException: if the data is not found
     """
     data = request.json
-    # fuel_expense = 0
     expense_type = data.get('expense_type')
     fare = data.get('fare')
     if travel_id is None:
         app.logger.warning("Travel id not found")
-        raise DataNotFoundException("Travel id not found", 404)
+        raise DataNotFoundException("Travel id not found", constants.CODE_404)
     with app.app_context():
         app.logger.info("Getting vehicle and travel data")
         vehicles = db.session.query(Vehicle).filter_by(travel_id=travel_id).all()
@@ -80,7 +80,7 @@ def add_expense(travel_id):
 
         if not vehicles and travel is None:
             app.logger.warning("Vehicle or Travel data not found")
-            raise DataNotFoundException("Vehicle or Travel data not found", 404)
+            raise DataNotFoundException("Vehicle or Travel data not found", constants.CODE_404)
 
         if fuel_expense is None:
             fuel_expense = 0
@@ -89,9 +89,10 @@ def add_expense(travel_id):
             for vehicle in vehicles:
                 app.logger.info("Calculating fuel expense")
                 fuel_expense +=\
-                    calculate_fuel_expense(vehicle.mileage, travel.distance, directions)
+                    calculate_fuel_expense(vehicle.mileage, vehicle.fuel_type,
+                                           directions)
             app.logger.info(f"Adding fuel expense")
-            db.session.add(Expense(expense_type='Fuel', fare=fuel_expense,
+            db.session.add(Expense(expense_type=constants.FUEL, fare=fuel_expense,
                                    user_id=vehicle.user_id, travel_id=travel_id,
                                    created_date=str(timestamp.now()),
                                    created_by=vehicle.user_id))
@@ -106,9 +107,9 @@ def add_expense(travel_id):
         db.session.commit()
         app.logger.info("Added expense")
     return {
-        "fuel_expense": fuel_expense,
-        "type": expense_type,
-        "fare": fare
+        constants.FUEL_EXPENSE: fuel_expense,
+        constants.TYPE: expense_type,
+        constants.FARE: fare
     }
 
 
@@ -128,17 +129,17 @@ def delete_expense(user_id, travel_id):
                                                       is_deleted=0).first()
         if expense is None:
             app.logger.warn(f"No travel found - travel_id: {travel_id}")
-            raise DataNotFoundException("Travel data not found", 404)
+            raise DataNotFoundException("Travel data not found", constants.CODE_404)
         expense.is_deleted = 1
         expense.updated_date = str(timestamp.now())
         expense.updated_by = user_id
         db.session.commit()
         app.logger.info(f"Expense deleted successfully - expense_id: {expense.id}")
         return ({
-            'id': expense.id,
-            'status_code': 200,
-            'description': 'Expense Deleted Successfully',
-            'timestamp': str(timestamp.now())
+            constants.ID: expense.id,
+            constants.STATUS_CODE: constants.CODE_200,
+            constants.DESCRIPTION: 'Expense Deleted Successfully',
+            constants.TIMESTAMP: str(timestamp.now())
         })
 
 
@@ -173,20 +174,19 @@ def update_expense(user_id, expense_id):
             app.logger.info("Updated expense")
         else:
             app.logger.warning("Expense data not found")
-            raise DataNotFoundException("Expense data not found", 404)
+            raise DataNotFoundException("Expense data not found", constants.CODE_404)
     return json.dumps(expense)
 
 
-def calculate_fuel_expense(mileage, total_distance, directions):
+def calculate_fuel_expense(mileage, fuel_type, directions):
     """
     This method is used to calculate fuel expense from the data given
+    :param fuel_type: type of fuel used in the vehicle
     :param mileage: mileage of the vehicle
-    :param total_distance: distance between origin to destination
     :param directions: JSON response of directions
     :return: fuel_expense of the travel
     """
     mileage *= 1000
-    litres = total_distance / mileage
     travel_distance = 0
     fuel_expense = 0
     for dis in directions['routes'][0]['legs'][0]['steps']:
@@ -200,13 +200,16 @@ def calculate_fuel_expense(mileage, total_distance, directions):
             travel_distance -= mileage
             for i in range(inc, 1, -1):
                 inc = int(len(coord) / i)
-                url = f"https://maps.googleapis.com/maps/api/" \
-                f"geocode/json?latlng={coord[inc][0]},{coord[inc][1]}&key={os.getenv('API_KEY')}"
+                url =\
+                    f"{constants.GEOCODE_URL}{coord[inc][0]}," \
+                    f"{coord[inc][1]}{constants.AMPERSAND_KEY}{os.getenv('API_KEY')}"
                 response = json.loads(urllib.request.urlopen(url).read())
-                district_name = response['results'][-3]['address_components'][0]['long_name']
+                district_name =\
+                    response['results'][-3]['address_components'][0]['long_name']
                 with app.app_context():
                     app.logger.info('Getting fuel prices')
-                    fuel = db.session.query(Fuel).filter_by(district_name=district_name, fuel_type='Petrol').first()
+                    fuel = db.session.query(Fuel).filter_by(district_name=district_name,
+                                                            fuel_type=fuel_type).first()
                     if fuel is not None:
                         fuel_expense += fuel.fuel_price
     return fuel_expense

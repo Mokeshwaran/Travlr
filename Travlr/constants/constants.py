@@ -1,10 +1,59 @@
-ADMIN='Admin'
-PETROL='Petrol'
-DIESEL='Diesel'
+"""
+This module contains all the constants used in this program.
+"""
+
+ADMIN = 'Admin'
+PETROL = 'petrol'
+DIESEL = 'diesel'
 GET = 'GET'
 POST = 'POST'
 DELETE = 'DELETE'
 PATCH = 'PATCH'
 PETROL_URL = "https://www.ndtv.com/fuel-prices/petrol-price-in-tamil-nadu-state"
 DIESEL_URL = "https://www.ndtv.com/fuel-prices/diesel-price-in-tamil-nadu-state"
+PETROL_URL_UT = "https://www.ndtv.com/fuel-prices/petrol-price-in-pondicherry-state"
+DIESEL_URL_UT = "https://www.ndtv.com/fuel-prices/diesel-price-in-pondicherry-state"
+OUTER_HTML = 'outerHTML'
 XPATH = '//*[@id="myID"]/div/div/table'
+GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json?latlng="
+AMPERSAND_KEY = "&key="
+FUEL = 'Fuel'
+ZERO_RESULTS = 'ZERO_RESULTS'
+LAT = 'lat'
+LNG = 'lng'
+CODE_500 = 500
+CODE_200 = 200
+CODE_404 = 404
+CODE_401 = 401
+CODE_405 = 405
+CODE_400 = 400
+CODE_403 = 403
+RADIUS = 300
+PRECISION_RADIUS = 0.003
+LOCATION_NAME = 'location_name'
+LOCATION_TYPE = 'location_type'
+UPDATED_DATE = 'updated_date'
+FETCH = 'fetch'
+ORIGIN_DESTINATION_KEY = 'origin={}&destination={}&key={}'
+MESSAGE = 'message'
+STATUS_CODE = 'status_code'
+TIMESTAMP = 'timestamp'
+ID = 'id'
+NAME = 'name'
+EMAIL = 'email'
+MOBILE_NUMBER = 'mobile_number'
+GENDER = 'gender'
+DESCRIPTION = 'description'
+FUEL_EXPENSE = 'fuel_expense'
+TYPE = 'type'
+FARE = 'fare'
+FUEL_PRICE = 'fuel_price'
+UPDATED_BY = 'updated_by'
+DISTRICT_NAME = 'district_name'
+CITY_DISTRICT = 'City/District'
+PRICE = 'Price'
+CHANGE = 'Change'
+INDEX = 'index'
+RESTAURANT = 'restaurant'
+ERROR = "error"
+OPERATIONAL = 'OPERATIONAL'
