@@ -3,27 +3,28 @@ import os
 from math import sqrt
 
 import polyline
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from googleplaces import GooglePlaces
 
 from Travlr import db, app
 from Travlr.constants import constants
 from Travlr.exceptions.data_not_found_exception import DataNotFoundException
 from Travlr.location.model import Location
-from Travlr.travel.model import Travel
 
 views = Blueprint('views', __name__)
 timestamp = datetime.datetime
 google_places = GooglePlaces(os.getenv('API_KEY'))
 
 
-@views.route('/view/<travel_id>', methods = [constants.GET])
-def view_locations(travel_id):
+@views.route('/view', methods = [constants.GET])
+def view_locations():
     """
     This method will retrieve the location details from the database
     :return: location details
     :raise DataNotFoundException: if the data is not found
     """
+    data = request.json
+    travel_id = data.get.args
     with app.app_context():
         query = db.session.query(Location).filter_by(travel_id=travel_id).all()
         if query is None:
@@ -49,7 +50,6 @@ def add_location(location_name, location_type, lat, lng):
                                                   Location.location_type == location_type)
         if query.first() is None:
             app.logger.info("Adding location details")
-            travel = Travel.query.filter_by(id=travel_id)
             db.session.add(Location(location_name=location_name, lat=lat, lng=lng,
                                     location_type=location_type, created_date=created_date))
             db.session.commit()
@@ -92,19 +92,20 @@ def get_locations(directions, location_type='restaurant'):
                     location_dict[location.location_name] = (location.lat, location.lng)
                     inc += 30
                 else:
-                    get_nearby_location(latlng, inc, location_type)
+                    get_nearby_location(latlng, location_dict, inc, location_type)
                     inc += 30
         else:
             while inc < len(latlng):
-                get_nearby_location(latlng, inc, location_type)
+                get_nearby_location(latlng, location_dict, inc, location_type)
                 inc += 30
     return location_dict
 
 
-def get_nearby_location(latlng, inc, location_type='restaurant'):
+def get_nearby_location(latlng, location_dict, inc, location_type='restaurant'):
     """
     This method will be executed if location data is not found in the database.
     :param latlng: list of tuple of latitude and longitude
+    :param location_dict: dictionary to store and show location data
     :param inc: integer value of incrementation
     :param location_type: type of location (e.g: Restaurant, Cafe, etc.)
     """
@@ -124,4 +125,5 @@ def get_nearby_location(latlng, inc, location_type='restaurant'):
 
         # adding location data to the database obtained from the Google Maps API
         add_location(location_name, location_type, lat, lng)
+        location_dict[location_name] = (lat, lng)
         app.logger.info("Location Added")
