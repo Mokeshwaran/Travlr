@@ -1,16 +1,19 @@
-from flask import Blueprint, jsonify
-
-from Travlr.constants import constants
-from Travlr.exceptions.data_not_found_exception import DataNotFoundException
 import datetime
+import uuid
+from typing import Any
 
+import pandas as pd
+
+from flask import Blueprint, jsonify, Response
+from pandas import DataFrame
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
-import pandas as pd
 
+from Travlr.constants import constants
+from Travlr.exceptions.data_not_found_exception import DataNotFoundException
 from Travlr import app, db
 from Travlr.fuel.model import Fuel
 
@@ -23,7 +26,7 @@ views = Blueprint('views', __name__)
 
 
 @views.route('/view', methods = [constants.GET])
-def view_fuels():
+def view_fuels() -> Response:
     """
     This method will retrieve the fuel data from the database
     :return: all fuel details
@@ -39,7 +42,7 @@ def view_fuels():
             return jsonify(query)
 
 
-def add_petrol(fuel_table, query):
+def add_petrol(fuel_table: dict, query: Any) -> None:
     """
     This method will add the petrol data to the database
     :param fuel_table: table of fuel data
@@ -70,7 +73,7 @@ def add_petrol(fuel_table, query):
         app.logger.info(f"Posted petrol data - district_name: {key}")
 
 
-def add_diesel(fuel_table, query):
+def add_diesel(fuel_table: dict, query: Any) -> None:
     """
     This method will add diesel data to the database
     :param fuel_table: table of fuel data
@@ -86,7 +89,7 @@ def add_diesel(fuel_table, query):
             app.logger.info("Adding diesel data")
             db.session.add(Fuel(district_name=district_name, fuel_type=fuel_type,
                                 fuel_price=fuel_price, created_date=timestamp.now(),
-                                created_by=constants.ADMIN))
+                                created_by=constants.ADMIN_ID))
             db.session.commit()
             app.logger.info("Added diesel data")
         else:
@@ -94,7 +97,7 @@ def add_diesel(fuel_table, query):
             fuel_data.update({
                 constants.FUEL_PRICE: fuel_price,
                 constants.UPDATED_DATE: timestamp.now(),
-                constants.UPDATED_BY: constants.ADMIN
+                constants.UPDATED_BY: constants.ADMIN_ID
             }, synchronize_session=constants.FETCH)
             db.session.commit()
             app.logger.info("Updated diesel data")
@@ -102,7 +105,7 @@ def add_diesel(fuel_table, query):
 
 
 @views.route('/add', methods = [constants.POST])
-def add_fuel():
+def add_fuel() -> Response:
     """
     This method will add the fuel detail to the database
     :return: added successfully response
@@ -116,10 +119,14 @@ def add_fuel():
         app.logger.info("Fetching diesel data")
         fuel_table = get_diesel()
         add_diesel(fuel_table, query)
-        return "Added successfully"
+        return jsonify({
+            constants.ID: str(uuid.uuid1()),
+            constants.DESCRIPTION: "Fuel added successfully",
+            constants.STATUS_CODE: constants.CODE_200
+        })
 
 
-def get_diesel():
+def get_diesel() -> dict:
     """
     This method will get and post the diesel data scraped from the web.
     :return: JSON content of diesel data
@@ -154,7 +161,7 @@ def get_diesel():
     return diesel_table
 
 
-def get_petrol():
+def get_petrol() -> dict:
     """
     This method will get and post the petrol data scraped from the web.
     :return: JSON content of petrol data
@@ -188,40 +195,44 @@ def get_petrol():
     app.logger.info("Fetched petrol data")
     return petrol_table
 
-def standardize_district_name(petrol_table):
+def standardize_district_name(fuel_table: DataFrame) -> None:
     """
     This method will standardize wrongly spelled district names.
-    :param petrol_table: table of petrol data
+    :param fuel_table: table of petrol data
     """
-    petrol_table.loc[
-        petrol_table[constants.DISTRICT_NAME] == "Kanniyakumari", constants.DISTRICT_NAME
+    fuel_table.loc[
+        fuel_table[constants.DISTRICT_NAME] == "Kanchipuram", constants.DISTRICT_NAME
+    ] = "Kancheepuram"
+
+    fuel_table.loc[
+        fuel_table[constants.DISTRICT_NAME] == "Kanniyakumari", constants.DISTRICT_NAME
     ] = "Kanyakumari"
 
-    petrol_table.loc[
-        petrol_table[constants.DISTRICT_NAME] == "Teni", constants.DISTRICT_NAME
+    fuel_table.loc[
+        fuel_table[constants.DISTRICT_NAME] == "Teni", constants.DISTRICT_NAME
     ] = "Theni"
 
-    petrol_table.loc[
-        petrol_table[constants.DISTRICT_NAME] == "Tiruchchirappalli",
+    fuel_table.loc[
+        fuel_table[constants.DISTRICT_NAME] == "Tiruchchirappalli",
         constants.DISTRICT_NAME
     ] = "Tiruchirappalli"
 
-    petrol_table.loc[
-        petrol_table[constants.DISTRICT_NAME] == "Tirupur", constants.DISTRICT_NAME
+    fuel_table.loc[
+        fuel_table[constants.DISTRICT_NAME] == "Tirupur", constants.DISTRICT_NAME
     ] = "Tiruppur"
 
-    petrol_table.loc[
-        petrol_table[constants.DISTRICT_NAME] == "Tiruvallur", constants.DISTRICT_NAME
+    fuel_table.loc[
+        fuel_table[constants.DISTRICT_NAME] == "Tiruvallur", constants.DISTRICT_NAME
     ] = "Thiruvallur"
 
-    petrol_table.loc[
-        petrol_table[constants.DISTRICT_NAME] == "Tuticorin", constants.DISTRICT_NAME
+    fuel_table.loc[
+        fuel_table[constants.DISTRICT_NAME] == "Tuticorin", constants.DISTRICT_NAME
     ] = "Thoothukudi"
 
-    petrol_table.loc[
-        petrol_table[constants.DISTRICT_NAME] == "Virudunagar", constants.DISTRICT_NAME
+    fuel_table.loc[
+        fuel_table[constants.DISTRICT_NAME] == "Virudunagar", constants.DISTRICT_NAME
     ] = "Virudhunagar"
 
-    petrol_table.loc[
-        petrol_table[constants.DISTRICT_NAME] == "Pondicherry", constants.DISTRICT_NAME
+    fuel_table.loc[
+        fuel_table[constants.DISTRICT_NAME] == "Pondicherry", constants.DISTRICT_NAME
     ] = "Puducherry"

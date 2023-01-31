@@ -1,8 +1,7 @@
 import datetime
-import json
 import hashlib
 
-from flask import Blueprint, request, Response, jsonify
+from flask import Blueprint, request, jsonify, Response
 
 from Travlr import app, db
 from Travlr.constants import constants
@@ -15,15 +14,16 @@ views = Blueprint('views', __name__)
 timestamp = datetime.datetime
 
 @views.route('/view', methods = [constants.GET])
-def view_users():
+def view_users() -> Response:
     """
     This method will retrieve all user details from the database
     :return: all user details
     :raise DataNotFoundException: if the data is not found
     """
     with app.app_context():
-        query = db.session.query(User).all()
+        query = db.session.query(User).filter_by(is_deleted=0).all()
         if query is None:
+            db.session.rollback()
             app.logger.warning("User data is not available")
             raise DataNotFoundException("User data is not available", constants.CODE_404)
         else:
@@ -32,7 +32,7 @@ def view_users():
 
 
 @views.route('/view-one/<email>', methods=[constants.GET])
-def view_user(email):
+def view_user(email: str) -> Response:
     """
     This method will retrieve a single user data from the database
     :param email: email id of the user
@@ -41,7 +41,8 @@ def view_user(email):
     """
     with app.app_context():
         query = db.session.query(User).filter_by(email=email, is_deleted=0).first()
-        if query is None:
+        if not query:
+            db.session.rollback()
             app.logger.warning("User data is not available")
             raise DataNotFoundException("User data is not available", constants.CODE_404)
         else:
@@ -50,28 +51,29 @@ def view_user(email):
 
 
 @views.route('/login', methods = [constants.POST])
-def login_user():
+def login_user() -> Response:
     data = request.json
     email = data['email']
     password = hashlib.md5(data['password'].encode()).hexdigest()
     with app.app_context():
         user = db.session.query(User).filter_by(email=email).first()
         if user is not None and user.password == password:
-            return {
+            return jsonify({
                 constants.ID: user.id,
                 constants.NAME: user.name,
                 constants.EMAIL: user.email,
                 constants.MOBILE_NUMBER: user.mobile_number,
                 constants.GENDER: user.gender
-            }
+            })
         else:
+            db.session.rollback()
             app.logger.warning("Invalid username or password")
             raise InvalidCredentialsException("Invalid username or password",
                                               constants.CODE_401)
 
 
 @views.route('/add', methods = [constants.POST])
-def register_user():
+def register_user() -> Response:
     """
     This method will add a user detail into the database
     :return: added user detail
@@ -93,20 +95,20 @@ def register_user():
                                 gender=gender, is_deleted=is_deleted,
                                 created_date=created_date))
             db.session.commit()
-        except Exception as e:
+        except Exception as exception:
             db.session.rollback()
             app.logger.warning("User already exists")
-            raise UserAlreadyExistsException(e, constants.CODE_400)
+            raise UserAlreadyExistsException(exception, constants.CODE_400)
     app.logger.info("Adding user details")
-    return {
+    return jsonify({
         constants.MESSAGE: "User added successfully",
         constants.STATUS_CODE: constants.CODE_200,
         constants.TIMESTAMP: timestamp.now()
-    }
+    })
 
 
 @views.route('/delete/<email>', methods = [constants.DELETE])
-def delete_user(email):
+def delete_user(email: str) -> Response:
     """
     This method will delete a user from the database
     :param email: user email
@@ -114,23 +116,23 @@ def delete_user(email):
     :raise DataNotFoundException: if the data is not found
     """
     with app.app_context():
-        user = db.session.query(User).filter_by(email=email).first()
+        user = db.session.query(User).filter_by(email=email, is_deleted=0).first()
         if user is not None:
             user.is_deleted = 1
             db.session.commit()
             app.logger.info(f"User deleted successfully - user_id: {user.id}")
-            return {
+            return jsonify({
                 constants.ID: user.id,
                 constants.STATUS_CODE: constants.CODE_200,
                 constants.DESCRIPTION: 'User deleted successfully',
                 constants.TIMESTAMP: str(timestamp.now())
-            }
+            })
     app.logger.warn(f"No user found - email_id: {email}")
     raise DataNotFoundException("User data not found", constants.CODE_404)
 
 
 @views.route('/update/<email>', methods = [constants.PATCH])
-def update_user(email):
+def update_user(email: str) -> Response:
     """
     This method will update a user based on the email
     :param email: email of the user to update
@@ -166,6 +168,7 @@ def update_user(email):
             db.session.commit()
             app.logger.info("Updated user")
         else:
+            db.session.rollback()
             app.logger.warning("User data not found", constants.CODE_404)
             raise DataNotFoundException("User data not found", constants.CODE_404)
-    return json.dumps(user)
+    return jsonify(user)

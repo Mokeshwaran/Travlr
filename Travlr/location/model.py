@@ -23,15 +23,13 @@ class Location(db.Model, fs_mixin):
     lat: float
     lng: float
     location_type: str
-    created_date: datetime
-    updated_date: datetime
 
     __tablename__ = 'location'
     id = db.Column(db.Integer(), primary_key=True)
-    location_name = db.Column(db.String(50))
+    location_name = db.Column(db.String(255))
     lat = db.Column(db.Float())
     lng = db.Column(db.Float())
-    location_type = db.Column(db.String(15))
+    location_type = db.Column(db.String(255))
     created_date = db.Column(db.DateTime(), server_default=func.now())
     updated_date = db.Column(db.DateTime())
 

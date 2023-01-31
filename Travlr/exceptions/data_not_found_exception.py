@@ -1,7 +1,7 @@
 from Travlr.exceptions.api_exception import APIException
 
 
-class DataNotFoundException(APIException):
+class DataNotFoundException(Exception):
     """
     Custom exception class will be raised if the data is not found
     """

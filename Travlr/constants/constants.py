@@ -3,6 +3,7 @@ This module contains all the constants used in this program.
 """
 
 ADMIN = 'Admin'
+ADMIN_ID = 0
 PETROL = 'petrol'
 DIESEL = 'diesel'
 GET = 'GET'
@@ -16,6 +17,7 @@ DIESEL_URL_UT = "https://www.ndtv.com/fuel-prices/diesel-price-in-pondicherry-st
 OUTER_HTML = 'outerHTML'
 XPATH = '//*[@id="myID"]/div/div/table'
 GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json?latlng="
+DIRECTIONS_URL = 'https://maps.googleapis.com/maps/api/directions/json?'
 AMPERSAND_KEY = "&key="
 FUEL = 'Fuel'
 ZERO_RESULTS = 'ZERO_RESULTS'
@@ -29,7 +31,7 @@ CODE_405 = 405
 CODE_400 = 400
 CODE_403 = 403
 RADIUS = 300
-PRECISION_RADIUS = 0.003
+PRECISION_RADIUS = 0.002209
 LOCATION_NAME = 'location_name'
 LOCATION_TYPE = 'location_type'
 UPDATED_DATE = 'updated_date'
@@ -57,3 +59,7 @@ INDEX = 'index'
 RESTAURANT = 'restaurant'
 ERROR = "error"
 OPERATIONAL = 'OPERATIONAL'
+KANCHEEPURAM = 'Kancheepuram'
+CHENGALPATTU = 'Chengalpattu'
+UUID = 'UUID'
+INCREMENT = 30

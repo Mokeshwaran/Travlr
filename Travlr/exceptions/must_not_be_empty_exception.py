@@ -1,7 +1,7 @@
 from Travlr.exceptions.api_exception import APIException
 
 
-class MustNotBeEmptyException(APIException):
+class MustNotBeEmptyException(Exception):
     """
     Custom exception class will be raised if the field is not be empty
     """

@@ -1,7 +1,7 @@
 import datetime
-import json
+import uuid
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
 
 from Travlr import db, app
 from Travlr.constants import constants
@@ -13,7 +13,7 @@ timestamp = datetime.datetime
 
 
 @views.route('/view/<user_id>', methods = [constants.GET])
-def view_vehicles(user_id):
+def view_vehicles(user_id: int) -> Response:
     """
     This method will retrieve all vehicle details associated
     with the user from the database
@@ -22,18 +22,18 @@ def view_vehicles(user_id):
     :raise DataNotFoundException: if the data is not found
     """
     with app.app_context():
-        query = db.session.query(Vehicle).filter_by(id=user_id).all()
+        query = db.session.query(Vehicle).filter_by(user_id=user_id).all()
         if query is None:
             app.logger.warning("Vehicle data is not available")
             raise DataNotFoundException("Vehicle data is not available",
                                         constants.CODE_404)
         else:
             app.logger.info("Fetching vehicle data")
-            return json.dumps(query)
+            return jsonify(query)
 
 
 @views.route('/view-one/<vehicle_id>', methods = [constants.GET])
-def view_vehicle(vehicle_id):
+def view_vehicle(vehicle_id: int) -> Response:
     """
     This method will retrieve single vehicle detail from the database.
     :return: Single vehicle data as JSON response
@@ -47,11 +47,11 @@ def view_vehicle(vehicle_id):
                                         constants.CODE_404)
         else:
             app.logger.info("Fetching vehicle data")
-            return json.dumps(query)
+            return jsonify(query)
 
 
 @views.route('/add', methods = [constants.POST])
-def add_vehicle():
+def add_vehicle() -> Response:
     """
     This method will add a single vehicle data to the database
     :return: added vehicle detail
@@ -74,11 +74,15 @@ def add_vehicle():
                                created_date=created_date, created_by=created_by))
         db.session.commit()
     app.logger.info("Added vehicle details")
-    return "added"
+    return jsonify({
+        constants.ID: str(uuid.uuid1()),
+        constants.DESCRIPTION: "Vehicle added successfully",
+        constants.STATUS_CODE: constants.CODE_200
+    })
 
 
 @views.route('/delete/<vehicle_id>', methods = [constants.DELETE])
-def delete_vehicle(vehicle_id):
+def delete_vehicle(vehicle_id: int) -> Response:
     """
     This method will delete a vehicle from the database
     :return: deleted vehicle detail
@@ -94,7 +98,7 @@ def delete_vehicle(vehicle_id):
         vehicle.updated_by = vehicle_id
         db.session.commit()
         app.logger.info(f"Vehicle deleted successfully - Vehicle_id: {vehicle.id}")
-        return ({
+        return jsonify({
             constants.ID: vehicle.id,
             constants.STATUS_CODE: constants.CODE_200,
             constants.DESCRIPTION: 'Vehicle Deleted Successfully',
@@ -103,7 +107,7 @@ def delete_vehicle(vehicle_id):
 
 
 @views.route('/update/<user_id>/<vehicle_id>', methods = [constants.PATCH])
-def update_vehicle(user_id, vehicle_id):
+def update_vehicle(user_id: int, vehicle_id: int) -> Response:
     """
     This method will update a vehicle based on the vehicle_id and user_id
     :param user_id: id of the user
@@ -142,4 +146,4 @@ def update_vehicle(user_id, vehicle_id):
         else:
             app.logger.warning("Vehicle data not found")
             raise DataNotFoundException("Vehicle data not found", constants.CODE_404)
-    return json.dumps(vehicle)
+        return jsonify(vehicle)

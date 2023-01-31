@@ -1,7 +1,7 @@
 from Travlr.exceptions.api_exception import APIException
 
 
-class UserAlreadyExistsException(APIException):
+class UserAlreadyExistsException(Exception):
     """
     Custom exception class will be raised if the user data already exists
     """

@@ -1,7 +1,7 @@
 from Travlr.exceptions.api_exception import APIException
 
 
-class InvalidCredentialsException(APIException):
+class InvalidCredentialsException(Exception):
     """
     Custom exception class will be raised if the given credentials are invalid
     """

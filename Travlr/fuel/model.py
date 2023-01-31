@@ -1,17 +1,13 @@
-import datetime
 from dataclasses import dataclass
 
 from flask_serialize import FlaskSerialize
 
 from Travlr import db
 
-fuel_travel = db.Table('travel_fuel', db.Model.metadata,
-    db.Column('fuel_id', db.Integer, db.ForeignKey('fuel.id')),
-    db.Column('travel_id', db.Integer, db.ForeignKey('travel.id'))
-)
+fs_mixin = FlaskSerialize(db)
 
 @dataclass
-class Fuel(db.Model):
+class Fuel(db.Model, fs_mixin):
     """
     This class is a model class for Fuel
     """
@@ -19,20 +15,17 @@ class Fuel(db.Model):
     district_name: str
     fuel_type: str
     fuel_price: float
-    created_date: datetime
-    updated_date: datetime
-    created_by: datetime
-    updated_by: datetime
 
     __tablename__ = 'fuel'
     id = db.Column(db.Integer(), primary_key=True)
-    district_name = db.Column(db.String(50))
-    fuel_type = db.Column(db.String(50))
+    district_name = db.Column(db.String(255))
+    fuel_type = db.Column(db.String(255))
     fuel_price = db.Column(db.Float())
     created_date = db.Column(db.DateTime)
     updated_date = db.Column(db.DateTime)
-    created_by = db.Column(db.String(50))
-    updated_by = db.Column(db.String(50))
+    created_by = db.Column(db.String(255))
+    updated_by = db.Column(db.String(255))
+
 
     def __init__(self, district_name=None, fuel_type=None, fuel_price=None,
                  created_date=None, updated_date=None, created_by=None, updated_by=None):

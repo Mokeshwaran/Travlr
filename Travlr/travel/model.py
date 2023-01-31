@@ -1,19 +1,19 @@
 import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from flask_serialize import FlaskSerialize
-# from marshmallow import schema
 
 from Travlr import db
 from Travlr.location.model import location_travel
-from Travlr.fuel.model import fuel_travel
+from Travlr.user.model import user_travel
+from Travlr.vehicle.model import Vehicle
 
 fs_mixin = FlaskSerialize(db)
 timestamp = datetime.datetime
 
 
-@dataclass
-class Travel(db.Model):
+@dataclass(kw_only=True)
+class Travel(db.Model, fs_mixin):
     """
     This class is a model class for Travel
     """
@@ -26,32 +26,28 @@ class Travel(db.Model):
     destination_lng: float
     distance: float
     places_visiting: str
-    is_deleted: int
-    created_date: datetime
-    updated_date: datetime
-    created_by: int
-    updated_by: int
-
+    users: user_travel
+    vehicles: Vehicle.id
 
     __tablename__ = 'travel'
     id = db.Column(db.Integer(), primary_key=True)
-    origin_name = db.Column(db.String(50))
+    origin_name = db.Column(db.String(255))
     origin_lat = db.Column(db.Float())
     origin_lng = db.Column(db.Float())
-    destination_name = db.Column(db.String(50))
+    destination_name = db.Column(db.String(255))
     destination_lat = db.Column(db.Float())
     destination_lng = db.Column(db.Float())
     distance = db.Column(db.Float())
-    places_visiting = db.Column(db.String(100))
+    places_visiting = db.Column(db.String(255))
     is_deleted = db.Column(db.Boolean)
     created_date = db.Column(db.DateTime)
     updated_date = db.Column(db.DateTime)
-    created_by = db.Column(db.String(50))
-    updated_by = db.Column(db.String(50))
+    created_by = db.Column(db.String(255))
+    updated_by = db.Column(db.String(255))
     expense = db.relationship('Expense', backref='travel')
-    vehicle_id = db.relationship('Vehicle', backref='vehicle')
-    location_travel = db.relationship('Location', secondary=location_travel)
-    fuel_travel = db.relationship('Fuel', secondary=fuel_travel)
+    vehicles = db.relationship('Vehicle', backref='travel', lazy='subquery')
+    users = db.relationship('User', secondary=user_travel, backref="travels", lazy='subquery')
+    location_travel = db.relationship('Location', secondary=location_travel, lazy='subquery')
 
     def __init__(self, travel_id=None, origin_name=None, origin_lat=None,
                  origin_lng=None, destination_name=None, destination_lat=None,

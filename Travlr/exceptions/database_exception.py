@@ -1,9 +1,9 @@
 from Travlr.exceptions.api_exception import APIException
 
 
-class DatabaseException(APIException):
+class DatabaseException(Exception):
     """
-    Custom exception class will be raised if some error in database operation
+    Custom exception class will be raised if any error in database operation
     """
     description = 'Database Exception'
 
